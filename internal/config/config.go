@@ -317,6 +317,23 @@ const (
 	//   export {...};
 	//
 	FormatESModule
+
+	// UMD stands for Universal Module Definition, and is a combination of CJS,
+	// AMD, and IIFE formats. That looks like this:
+	//
+	// (function(root, factory) {
+	//   if (typeof define === 'function' && define.amd) {
+	//     define(['module', 'exports', 'dependency'], factory);
+	//   } else if (typeof module === 'object' && module.exports) {
+	//     module.exports = factory(module, exports, require('dependency'));
+	//   } else {
+	//     var module = { exports: {} };
+	//     root.globalName = factory(module, module.exports, root.dependencyGlobal);
+	//   }
+	// }(typeof self !== 'undefined' ? self : this, function() {
+	//   ... bundled code ...
+	// }));
+	FormatUMD
 )
 
 func (f Format) KeepESMImportExportSyntax() bool {
@@ -331,6 +348,8 @@ func (f Format) String() string {
 		return "cjs"
 	case FormatESModule:
 		return "esm"
+	case FormatUMD:
+		return "umd"
 	}
 	return ""
 }

@@ -288,7 +288,7 @@ func Link(
 			// when the global name is present, since that's the only way the exports
 			// can actually be observed externally.
 			if repr.AST.ExportKeyword.Len > 0 && (options.OutputFormat == config.FormatCommonJS ||
-				(options.OutputFormat == config.FormatIIFE && len(options.GlobalName) > 0)) {
+				((options.OutputFormat == config.FormatIIFE || options.OutputFormat == config.FormatUMD) && len(options.GlobalName) > 0)) {
 				repr.AST.UsesExportsRef = true
 				repr.Meta.ForceIncludeExportsForEntryPoint = true
 			}
@@ -1446,7 +1446,7 @@ func (c *linkerContext) scanImportsAndExports() {
 			// resulting wrapper won't be invoked by other files. An exception is made
 			// for entry point files in CommonJS format (or when in pass-through mode).
 			if repr.AST.ExportsKind == js_ast.ExportsCommonJS && (!file.IsEntryPoint() ||
-				c.options.OutputFormat == config.FormatIIFE || c.options.OutputFormat == config.FormatESModule) {
+				c.options.OutputFormat == config.FormatIIFE || c.options.OutputFormat == config.FormatUMD || c.options.OutputFormat == config.FormatESModule) {
 				repr.Meta.Wrap = graph.WrapCJS
 			}
 		}
@@ -4933,7 +4933,7 @@ func (c *linkerContext) generateCodeForFileInChunkJS(
 
 	// Indent the file if everything is wrapped in an IIFE
 	indent := 0
-	if c.options.OutputFormat == config.FormatIIFE {
+	if c.options.OutputFormat == config.FormatIIFE || c.options.OutputFormat == config.FormatUMD {
 		indent++
 	}
 
@@ -5028,6 +5028,12 @@ func (c *linkerContext) generateEntryPointTailJS(
 				}})
 			}
 		}
+
+	case config.FormatUMD:
+		// "return require_foo();"
+		stmts = append(stmts, js_ast.Stmt{Data: &js_ast.SReturn{ValueOrNil: js_ast.Expr{Data: &js_ast.ECall{
+			Target: js_ast.Expr{Data: &js_ast.EIdentifier{Ref: repr.AST.WrapperRef}},
+		}}}})
 
 	case config.FormatCommonJS:
 		if repr.Meta.Wrap == graph.WrapCJS {
@@ -5276,7 +5282,7 @@ func (c *linkerContext) generateEntryPointTailJS(
 
 	// Indent the file if everything is wrapped in an IIFE
 	indent := 0
-	if c.options.OutputFormat == config.FormatIIFE {
+	if c.options.OutputFormat == config.FormatIIFE || c.options.OutputFormat == config.FormatUMD {
 		indent++
 	}
 
@@ -5611,7 +5617,7 @@ func (c *linkerContext) generateChunkJS(chunkIndex int, chunkWaitGroup *sync.Wai
 	{
 		// Indent the file if everything is wrapped in an IIFE
 		indent := 0
-		if c.options.OutputFormat == config.FormatIIFE {
+		if c.options.OutputFormat == config.FormatIIFE || c.options.OutputFormat == config.FormatUMD {
 			indent++
 		}
 		printOptions := js_printer.Options{
@@ -5709,7 +5715,8 @@ func (c *linkerContext) generateChunkJS(chunkIndex int, chunkWaitGroup *sync.Wai
 	}
 
 	// Optionally wrap with an IIFE
-	if c.options.OutputFormat == config.FormatIIFE {
+	switch c.options.OutputFormat {
+	case config.FormatIIFE:
 		var text string
 		indent = "  "
 		if len(c.options.GlobalName) > 0 {
@@ -5719,6 +5726,21 @@ func (c *linkerContext) generateChunkJS(chunkIndex int, chunkWaitGroup *sync.Wai
 			text += "(function()" + space + "{" + newline
 		} else {
 			text += "(()" + space + "=>" + space + "{" + newline
+		}
+		prevOffset.AdvanceString(text)
+		j.AddString(text)
+		newlineBeforeComment = false
+
+	case config.FormatUMD:
+		var text string
+		indent = "  "
+		if len(c.options.GlobalName) > 0 {
+			text = c.generateGlobalNamePrefix()
+		}
+		if c.options.UnsupportedJSFeatures.Has(compat.Arrow) {
+			text += "((function()" + space + "{" + newline
+		} else {
+			text += "((()" + space + "=>" + space + "{" + newline
 		}
 		prevOffset.AdvanceString(text)
 		j.AddString(text)
@@ -5914,8 +5936,12 @@ func (c *linkerContext) generateChunkJS(chunkIndex int, chunkWaitGroup *sync.Wai
 	}
 
 	// Optionally wrap with an IIFE
-	if c.options.OutputFormat == config.FormatIIFE {
+	switch c.options.OutputFormat {
+	case config.FormatIIFE:
 		j.AddString("})();" + newline)
+
+	case config.FormatUMD:
+		j.AddString("}));" + newline)
 	}
 
 	// Make sure the file ends with a newline

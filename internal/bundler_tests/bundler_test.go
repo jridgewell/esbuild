@@ -105,7 +105,7 @@ func (s *suite) __expectBundledImpl(t *testing.T, args bundled, fsKind fs.MockKi
 		if args.options.AbsOutputFile != "" {
 			args.options.AbsOutputDir = path.Dir(args.options.AbsOutputFile)
 		}
-		if args.options.Mode == config.ModeBundle || (args.options.Mode == config.ModeConvertFormat && args.options.OutputFormat == config.FormatIIFE) {
+		if args.options.Mode == config.ModeBundle || (args.options.Mode == config.ModeConvertFormat && (args.options.OutputFormat == config.FormatIIFE || args.options.OutputFormat == config.FormatUMD)) {
 			// Apply this default to all tests since it was not configurable when the tests were written
 			args.options.TreeShaking = true
 		}

@@ -598,10 +598,12 @@ func parseOptionsImpl(
 				format = api.FormatCommonJS
 			case "esm":
 				format = api.FormatESModule
+			case "umd":
+				format = api.FormatUMD
 			default:
 				return parseOptionsExtras{}, cli_helpers.MakeErrorWithNote(
 					fmt.Sprintf("Invalid value %q in %q", value, arg),
-					"Valid values are \"iife\", \"cjs\", or \"esm\".",
+					"Valid values are \"iife\", \"cjs\", \"esm\", or \"umd\".",
 				)
 			}
 			if buildOpts != nil {

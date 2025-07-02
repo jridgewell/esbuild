@@ -128,6 +128,8 @@ func validateFormat(value Format) config.Format {
 		return config.FormatCommonJS
 	case FormatESModule:
 		return config.FormatESModule
+	case FormatUMD:
+		return config.FormatUMD
 	default:
 		panic("Invalid format")
 	}
@@ -230,13 +232,13 @@ func validateExternalPackages(value Packages) bool {
 func validateTreeShaking(value TreeShaking, bundle bool, format Format) bool {
 	switch value {
 	case TreeShakingDefault:
-		// If we're in an IIFE then there's no way to concatenate additional code
-		// to the end of our output so we assume tree shaking is safe. And when
-		// bundling we assume that tree shaking is safe because if you want to add
-		// code to the bundle, you should be doing that by including it in the
+		// If we're in an IIFE/UMD then there's no way to concatenate additional
+		// code to the end of our output so we assume tree shaking is safe. And
+		// when bundling we assume that tree shaking is safe because if you want to
+		// add code to the bundle, you should be doing that by including it in the
 		// bundle instead of concatenating it afterward, so we also assume tree
 		// shaking is safe then. Otherwise we assume tree shaking is not safe.
-		return bundle || format == FormatIIFE
+		return bundle || format == FormatIIFE || format == FormatUMD
 	case TreeShakingFalse:
 		return false
 	case TreeShakingTrue:

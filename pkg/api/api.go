@@ -174,6 +174,7 @@ const (
 	FormatIIFE
 	FormatCommonJS
 	FormatESModule
+	FormatUMD
 )
 
 type Packages uint8
